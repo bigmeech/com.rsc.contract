@@ -146,6 +146,10 @@ contract Main {
     
     event LogNewContractCreated(address initiator, uint contractId);
     
+    modifier isInitiator(bool isContractInitiator) {
+        require(!isContractInitiator);
+        _;
+    }
     // creates a new scheme
     function createNewScheme (uint schemeType, uint memberSize, uint amountPerContribution) private returns (Scheme) {
         if (schemeType == uint(SchemeTypes.ROSCA)) {
@@ -164,9 +168,8 @@ contract Main {
     // contracts can only be terminated when they in the RECRUITING 
     // phase of which funds will be returned to existing participants.
     // only initiators can terminate the contract
-    function destroyScheme(uint _schemeId) public view {
+    function destroyScheme(uint _schemeId) public isInitiator(msg.sender == initiator) view {
         RotationScheme contractScheme = RotationScheme(schemes[_schemeId]);
         address initiator = RotationScheme(contractScheme).getInitiator();
-        require(msg.sender == initiator);
     }
 }
