@@ -111,17 +111,22 @@ contract RotationScheme is Scheme {
     // implement joining this scheme. One can only join when contract is on recruitement pphace
     function join() public onlyOnRecruit isValidContribution payable {
         balances[msg.sender] += msg.value;
-        Contribution memory contribution = Contribution(++contributionCount, msg.sender, block.timestamp);
+        Contribution memory contribution = Contribution(++contributionCount, msg.sender, now);
         contributions.push(contribution);
     }
 
     // address to send previously deposited funds to if any
+    // TODO check this properly for security issues
     function leave () public onlyOnRecruit () {
-        
+        uint256 amountToTransfer = balances[msg.sender];
+        balances[msg.sender] -= amountToTransfer;
+        msg.sender.transfer(amountToTransfer);
     }
     
-    function contribute() public payable {
-        
+    function contribute() public isValidContribution payable {
+        balances[msg.sender] += msg.value;
+        Contribution memory contribution = Contribution(++contributionCount, msg.sender, now);
+        contributions.push(contribution);
     }
     
     function isMemberAddress(address toCheck) private view returns (bool) {
