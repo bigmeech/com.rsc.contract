@@ -40,7 +40,10 @@ contract Scheme {
 contract RotationScheme is Scheme {
     enum ContributionPhase { RECRUITING, ONGOING, ENDED }
     ContributionPhase currentContributiontPhase;
-
+    
+    // contributions
+    Contribution[] contributions;
+    
     uint contributionAmount;
     uint contributionCount = 0;
     uint currentContributionRound = 0;
@@ -55,6 +58,12 @@ contract RotationScheme is Scheme {
 
     // maintain balance of all participants in this contribution
     mapping (address => uint256) balances;
+    
+    struct Contribution {
+        uint contributionId;
+        address contrbutor;
+        uint dateOfContribution;
+    }
 
     /**
         this contract is automatically created from the main contract
@@ -73,12 +82,17 @@ contract RotationScheme is Scheme {
         initiator = msg.sender;
     }
     
+    /**
+        returns owner/initiator of the contract
+    */
     function getInitiator () public view returns (address) {
         return initiator;
     }
     
-    // for functions required only on recruitment phase
-    // e.g. join or remove
+    /**
+        for functions required only on recruitment phase
+        e.g. join or remove
+    */
     modifier onlyOnRecruit {
         if (currentContributiontPhase != ContributionPhase.RECRUITING) {
             revert();
@@ -86,21 +100,13 @@ contract RotationScheme is Scheme {
         _;
     }
 
+    /**
+        checks if sent funds is a valid contribution based on the set rules of the scheme
+    */
     modifier isValidContribution {
-        if (msg.value != contributionAmount) {
-            revert();
-        }
+        require(msg.value == contributionAmount);
         _;
     }
-
-    struct Contribution {
-        uint contributionId;
-        address contrbutor;
-        uint dateOfContribution;
-    }
-
-    // contributions
-    Contribution[] contributions;
 
     // implement joining this scheme. One can only join when contract is on recruitement pphace
     function join() public onlyOnRecruit isValidContribution payable {
@@ -119,7 +125,10 @@ contract RotationScheme is Scheme {
     }
     
     function isMemberAddress(address toCheck) private view returns (bool) {
-        
+        if(balances[toCheck] != 0) {
+            return false;
+        }
+        return true;
     }
     
     function pay() public payable {
@@ -137,14 +146,6 @@ contract Main {
     
     event LogNewContractCreated(address initiator, uint contractId);
     
-    modifier isContractInitiator(uint schemeId) {
-        address scheme = schemes[schemeId];
-        if (msg.sender != Scheme(scheme).getInitiator()) {
-            revert();
-        }
-        _;
-    }
-    
     // creates a new scheme
     function createNewScheme (uint schemeType, uint memberSize, uint amountPerContribution) private returns (Scheme) {
         if (schemeType == uint(SchemeTypes.ROSCA)) {
@@ -161,9 +162,11 @@ contract Main {
     
     // terminate contract
     // contracts can only be terminated when they in the RECRUITING 
-    // phase of which funds will be returned to existing participants
-    function destroyScheme(uint _schemeId) public isContractInitiator(uint schemeId) {
-        address scheme = schemes[_schemeId];
-        address initiator = Scheme(scheme).getInitiator();
+    // phase of which funds will be returned to existing participants.
+    // only initiators can terminate the contract
+    function destroyScheme(uint _schemeId) public view {
+        RotationScheme contractScheme = RotationScheme(schemes[_schemeId]);
+        address initiator = RotationScheme(contractScheme).getInitiator();
+        require(msg.sender == initiator);
     }
 }
